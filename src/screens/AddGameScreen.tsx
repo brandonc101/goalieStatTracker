@@ -6,10 +6,12 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
   Platform,
+  Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, spacing, typography, commonStyles, shadows } from '../styles/theme';
 import { addGame } from '../utils/storage';
 import { GameInput } from '../types';
@@ -20,6 +22,8 @@ interface AddGameScreenProps {
 
 export const AddGameScreen: React.FC<AddGameScreenProps> = ({ navigation }) => {
   const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
   const [team, setTeam] = useState('');
   const [league, setLeague] = useState('');
   const [opponent, setOpponent] = useState('');
@@ -27,6 +31,29 @@ export const AddGameScreen: React.FC<AddGameScreenProps> = ({ navigation }) => {
   const [goalsAllowed, setGoalsAllowed] = useState('');
   const [result, setResult] = useState<'W' | 'L' | 'OTL' | 'SOL'>('W');
   const [notes, setNotes] = useState('');
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+      if (selectedDate) {
+        setDate(selectedDate);
+      }
+    } else {
+      if (selectedDate) {
+        setTempDate(selectedDate);
+      }
+    }
+  };
+
+  const confirmDate = () => {
+    setDate(tempDate);
+    setShowDatePicker(false);
+  };
+
+  const cancelDate = () => {
+    setTempDate(date);
+    setShowDatePicker(false);
+  };
 
   const handleSave = async () => {
     // Validation
@@ -95,11 +122,27 @@ export const AddGameScreen: React.FC<AddGameScreenProps> = ({ navigation }) => {
         </View>
 
         <View style={styles.form}>
-          {/* Date - simplified for now */}
+          {/* Date Picker Button */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Date</Text>
-            <Text style={styles.dateText}>{date.toLocaleDateString()}</Text>
-            <Text style={styles.helperText}>Using today's date</Text>
+            <Text style={styles.label}>Game Date *</Text>
+            <TouchableOpacity 
+              style={styles.dateButton}
+              onPress={() => {
+                setTempDate(date);
+                setShowDatePicker(true);
+              }}
+            >
+              <Text style={styles.dateButtonText}>
+                {date.toLocaleDateString('en-US', { 
+                  weekday: 'short',
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric' 
+                })}
+              </Text>
+              <Text style={styles.dateButtonIcon}>📅</Text>
+            </TouchableOpacity>
+            <Text style={styles.helperText}>Tap to change date</Text>
           </View>
 
           {/* Team */}
@@ -227,6 +270,57 @@ export const AddGameScreen: React.FC<AddGameScreenProps> = ({ navigation }) => {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* iOS Modal Date Picker */}
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={showDatePicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={cancelDate}
+        >
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity 
+              style={styles.modalTouchable}
+              activeOpacity={1}
+              onPress={cancelDate}
+            />
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={cancelDate} style={styles.modalCancelButton}>
+                  <Text style={styles.modalButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Select Date</Text>
+                <TouchableOpacity onPress={confirmDate} style={styles.modalDoneButton}>
+                  <Text style={[styles.modalButtonText, styles.modalDoneText]}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.pickerContainer}>
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  maximumDate={new Date()}
+                  themeVariant="dark"
+                  style={styles.picker}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Android Date Picker */}
+      {Platform.OS === 'android' && showDatePicker && (
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+          maximumDate={new Date()}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -286,19 +380,82 @@ const styles = StyleSheet.create({
     height: 100,
     paddingTop: spacing.md,
   },
-  dateText: {
-    ...typography.body,
-    color: colors.text,
+  dateButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: colors.border,
   },
+  dateButtonText: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  dateButtonIcon: {
+    fontSize: 20,
+  },
   helperText: {
     ...typography.small,
     color: colors.textMuted,
     marginTop: spacing.xs,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalTouchable: {
+    flex: 1,
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalCancelButton: {
+    padding: spacing.sm,
+    minWidth: 80,
+  },
+  modalDoneButton: {
+    padding: spacing.sm,
+    minWidth: 80,
+    alignItems: 'flex-end',
+  },
+  modalTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  modalButtonText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  modalDoneText: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  pickerContainer: {
+    height: 260,
+    justifyContent: 'center',
+    paddingBottom: spacing.lg,
+  },
+  picker: {
+    height: 260,
+    width: '100%',
   },
   statsRow: {
     flexDirection: 'row',
