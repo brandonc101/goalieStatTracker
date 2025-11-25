@@ -32,6 +32,17 @@ export const AddGameScreen: React.FC<AddGameScreenProps> = ({ navigation }) => {
   const [result, setResult] = useState<'W' | 'L' | 'OTL' | 'SOL'>('W');
   const [notes, setNotes] = useState('');
 
+  const resetForm = () => {
+    setDate(new Date());
+    setTeam('');
+    setLeague('');
+    setOpponent('');
+    setShotsAgainst('');
+    setGoalsAllowed('');
+    setResult('W');
+    setNotes('');
+  };
+
   const handleDateChange = (event: any, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
       setShowDatePicker(false);
@@ -95,9 +106,18 @@ export const AddGameScreen: React.FC<AddGameScreenProps> = ({ navigation }) => {
       };
 
       await addGame(gameInput);
-      Alert.alert('Success', 'Game added successfully!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      
+      // Reset the form
+      resetForm();
+      
+      Alert.alert(
+        'Success', 
+        'Game added successfully! Add another game or go back to view stats.', 
+        [
+          { text: 'Add Another', onPress: () => {} },
+          { text: 'View Stats', onPress: () => navigation.navigate('Home') },
+        ]
+      );
     } catch (error) {
       Alert.alert('Error', 'Failed to save game. Please try again.');
     }
